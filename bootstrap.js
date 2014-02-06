@@ -10,7 +10,12 @@ const PANEL_TITLE = "Pocket";
 const PANEL_ID = "com.margaretleibovic.pocket";
 const DATASET_ID = "com.margaretleibovic.pocket.items";
 
-var Pocket;
+XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
+  let win = Services.wm.getMostRecentWindow("navigator:browser");
+  Services.scriptloader.loadSubScript("chrome://pocketpanel/content/pocket.js", win);
+  return win.Pocket;
+});
+
 var menuId;
 
 // Set up UI every time the add-on is loaded
@@ -20,8 +25,7 @@ function loadIntoWindow(window) {
     callback: updateData
   });
 
-  Services.scriptloader.loadSubScript("chrome://pocketpanel/content/pocket.js", window);
-  Pocket = window.Pocket;
+  updateData();
 }
 
 // Clean up UI every time the add-on is unloaded
@@ -52,7 +56,7 @@ function updateData() {
 function saveItems(items) {
   Task.spawn(function() {
     let storage = HomeProvider.getStorage(DATASET_ID);
-    //yield storage.deleteAll();
+    yield storage.deleteAll();
     yield storage.save(items);
   }).then(null, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
 }
@@ -121,7 +125,8 @@ function install(aData, aReason) {
     views: [{
       type: Home.panels.View.LIST,
       dataset: DATASET_ID
-    }]
+    }],
+    autoInstall: true
   });
 }
 
