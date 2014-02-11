@@ -1,15 +1,34 @@
 // Inspired by https://github.com/einartryggvi/watchpocket/blob/master/js/main.js
 
+const ACCESS_TOKEN_PREF = "margaretleibovic.pocket.accessToken";
 const CONSUMER_KEY = "";
 const REDIRECT_URI = "about:blank";
 
 var Pocket = {
-  // These will be set during authentication.
-  _requestToken: "",
   _accessToken: "",
 
+  get accessToken() {
+    if (this._accessToken) {
+      return this._accessToken;
+    }
+    try {
+      this._accessToken = Services.prefs.getCharPref(ACCESS_TOKEN_PREF);
+    } catch (e) {}
+
+    return this._accessToken;
+  },
+
+  set accessToken(token) {
+    this._accessToken = token;
+    Services.prefs.setCharPref(ACCESS_TOKEN_PREF, token);
+  },
+
   get isAuthenticated() {
-    return !!this._accessToken;
+    return !!this.accessToken;
+  },
+
+  clearAccessToken: function() {
+    Services.prefs.clearUserPref(ACCESS_TOKEN_PREF);
   },
 
   // http://getpocket.com/developer/docs/authentication
@@ -21,9 +40,40 @@ var Pocket = {
         redirect_uri: REDIRECT_URI
       }),
       response => {
-        // XXX: save token in a more permanent place
-        this._requestToken = response.code;
-        this._getAuthorization(callback);
+        this._getAuthorization(response.code, callback);
+      }
+    );
+  },
+
+  _getAuthorization: function(requestToken, callback) {
+    var authUrl = [
+      "https://getpocket.com/auth/authorize?request_token=",
+      requestToken,
+      "&redirect_uri=",
+      REDIRECT_URI
+    ].join("");
+    
+    let tab = window.BrowserApp.addTab(authUrl);
+    tab.browser.addEventListener("pageshow", evt => {
+      let url = tab.browser.contentWindow.location.href;
+      if (url == REDIRECT_URI) {
+        this._getAccessToken(requestToken, callback);
+      }
+    }, false);
+  },
+
+  _getAccessToken: function(requestToken, callback) {
+    this._post(
+      "https://getpocket.com/v3/oauth/authorize",
+      JSON.stringify({
+        consumer_key: CONSUMER_KEY,
+        code: requestToken
+      }),
+      response => {
+        this.accessToken = response.access_token;
+        if (callback) {
+          callback();
+        }
       }
     );
   },
@@ -34,7 +84,7 @@ var Pocket = {
       "https://getpocket.com/v3/get",
       JSON.stringify({
         consumer_key: CONSUMER_KEY,
-        access_token: this._accessToken,
+        access_token: this.accessToken,
         contentType: "article",
         sort: "newest",
         count: 20,
@@ -42,42 +92,6 @@ var Pocket = {
       }),
       response => {
         callback(response.list);
-      }
-    );
-  },
-
-  _getAuthorization: function(callback) {
-    var authUrl = [
-      "https://getpocket.com/auth/authorize?request_token=",
-      this._requestToken,
-      "&redirect_uri=",
-      REDIRECT_URI
-    ].join("");
-    
-    let tab = window.BrowserApp.addTab(authUrl);
-    tab.browser.addEventListener("pageshow", evt => {
-      // Check to see if we were redirected to the receiver URL.
-      let url = tab.browser.contentWindow.location.href;
-      if (url == REDIRECT_URI) {
-        this._getAccessToken(callback);
-        window.BrowserApp.closeTab(tab);
-      }
-    }, false);
-  },
-
-  _getAccessToken: function(callback) {
-    this._post(
-      "https://getpocket.com/v3/oauth/authorize",
-      JSON.stringify({
-        consumer_key: CONSUMER_KEY,
-        code: this._requestToken
-      }),
-      response => {
-        // XXX: save token in a more permanent place
-        this._accessToken = response.access_token;
-        if (callback) {
-          callback();
-        }
       }
     );
   },
@@ -91,12 +105,12 @@ var Pocket = {
       Cu.reportError("Pocket: POST error - " + url + ": " + req.statusText);
     }, false);
     req.addEventListener("abort", evt => {
-      Cu.reportError("Pokcet: POST abort - " + url + ": " + req.statusText);
+      Cu.reportError("Pocket: POST abort - " + url + ": " + req.statusText);
     }, false);
 
     req.addEventListener("load", evt => {
       if (req.status === 401) {
-        this.authenticate(callback);
+        Cu.reportError("Pocket: POST fail - " + url + ": not authenticated");
       } else if (req.status === 200 && callback) {
         let response = JSON.parse(req.responseText);
         callback(response);

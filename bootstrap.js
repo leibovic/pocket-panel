@@ -18,47 +18,56 @@ XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
 
 var menuId;
 
-// Set up UI every time the add-on is loaded
 function loadIntoWindow(window) {
   menuId = window.NativeWindow.menu.add({
     name: "Update Pocket panel",
-    callback: updateData
-  });
-
-  updateData();
-}
-
-// Clean up UI every time the add-on is unloaded
-function unloadFromWindow(window) {
-  if (menuId) {
-    window.NativeWindow.menu.remove(menuId);
-    menuId = null;
-  }
-}
-
-function updateData() {
-  Pocket.authenticate(function(){
-    Pocket.getItems(function(list) {
-      let items = [];
-      for (let id in list) {
-        let item = list[id];
-        items.push({
-          title: item.resolved_title,
-          description: item.excerpt,
-          url: item.resolved_url
-        });
+    parent: window.NativeWindow.menu.toolsMenuID,
+    callback: function() {
+      if (!Pocket.isAuthenticated) {
+        Pocket.authenticate(() => updateData(openPocketPanel));
+      } else {
+        updateData(openPocketPanel);
       }
-      saveItems(items);
-    });
+    }
   });
 }
 
-function saveItems(items) {
+function unloadFromWindow(window) {
+  window.NativeWindow.menu.remove(menuId);
+}
+
+function openPocketPanel() {
+  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?page=" + PANEL_ID);
+}
+
+function updateData(callback) {
+  Pocket.getItems(function(list) {
+    let items = [];
+    for (let id in list) {
+      let item = list[id];
+      items.push({
+        title: item.resolved_title,
+        description: item.excerpt,
+        url: item.resolved_url
+      });
+    }
+    saveItems(items, callback);
+  });
+}
+
+function saveItems(items, callback) {
   Task.spawn(function() {
     let storage = HomeProvider.getStorage(DATASET_ID);
     yield storage.deleteAll();
     yield storage.save(items);
-  }).then(null, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+}
+
+function deleteItems() {
+  Task.spawn(function() {
+    let storage = HomeProvider.getStorage(DATASET_ID);
+    yield storage.deleteAll();
+  }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
 }
 
 /**
@@ -94,6 +103,26 @@ function startup(aData, aReason) {
 
   // Load into any new windows
   wm.addListener(windowListener);
+
+  // Update pocket items once per hour.
+  HomeProvider.addPeriodicSync(DATASET_ID, 3600, updateData);
+
+  if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE) {
+    // Fetch items for the first time.
+    Pocket.authenticate(() => updateData(openPocketPanel));
+
+    // Add a panel for pocket items.
+    Home.panels.add({
+      id: PANEL_ID,
+      title: PANEL_TITLE,
+      layout: Home.panels.Layout.FRAME,
+      views: [{
+        type: Home.panels.View.LIST,
+        dataset: DATASET_ID
+      }],
+      autoInstall: true
+    });
+  }
 }
 
 function shutdown(aData, aReason) {
@@ -101,6 +130,12 @@ function shutdown(aData, aReason) {
   // up any UI changes made
   if (aReason == APP_SHUTDOWN) {
     return;
+  }
+
+  if (aReason == ADDON_UNINSTALL || aReason == ADDON_DISABLE) {
+    deleteItems();
+    Home.panels.remove(PANEL_ID);
+    Pocket.clearAccessToken();
   }
 
   let wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
@@ -117,19 +152,7 @@ function shutdown(aData, aReason) {
 }
 
 function install(aData, aReason) {
-  // Add a panel for pocket items
-  Home.panels.add({
-    id: PANEL_ID,
-    title: PANEL_TITLE,
-    layout: Home.panels.Layout.FRAME,
-    views: [{
-      type: Home.panels.View.LIST,
-      dataset: DATASET_ID
-    }],
-    autoInstall: true
-  });
 }
 
 function uninstall(aData, aReason) {
-  Home.panels.remove(PANEL_ID);
 }
