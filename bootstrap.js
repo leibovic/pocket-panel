@@ -48,7 +48,7 @@ function updateData(callback) {
       items.push({
         title: item.resolved_title,
         description: item.excerpt,
-        url: item.resolved_url
+        url: "about:reader?url=" + encodeURIComponent(item.resolved_url)
       });
     }
     saveItems(items, callback);
@@ -111,7 +111,7 @@ function startup(aData, aReason) {
     // Fetch items for the first time.
     Pocket.authenticate(() => updateData(openPocketPanel));
 
-    // Add a panel for pocket items.
+    // Install a panel for pocket items.
     Home.panels.add({
       id: PANEL_ID,
       title: PANEL_TITLE,
@@ -120,7 +120,7 @@ function startup(aData, aReason) {
         type: Home.panels.View.LIST,
         dataset: DATASET_ID
       }],
-      autoInstall: true
+      action: Home.panels.Action.INSTALL
     });
   }
 }
