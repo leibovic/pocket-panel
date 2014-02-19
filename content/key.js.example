@@ -1,0 +1,3 @@
+// Update this value with the CONSUMER_KEY you get when you register
+// your Pocket app here: http://getpocket.com/developer/apps/new
+const CONSUMER_KEY = "";

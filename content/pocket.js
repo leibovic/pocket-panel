@@ -2,7 +2,7 @@
 
 XPCOMUtils.defineLazyGetter(this, "CONSUMER_KEY", function() {
   let sandbox = {};
-  Services.scriptloader.loadSubScript("chrome://pocketpanel/content/consumer_key.js", sandbox);
+  Services.scriptloader.loadSubScript("chrome://pocketpanel/content/key.js", sandbox);
   return sandbox.CONSUMER_KEY;
 });
 
