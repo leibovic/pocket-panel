@@ -1,7 +1,12 @@
 // Inspired by https://github.com/einartryggvi/watchpocket/blob/master/js/main.js
 
+XPCOMUtils.defineLazyGetter(this, "CONSUMER_KEY", function() {
+  let sandbox = {};
+  Services.scriptloader.loadSubScript("chrome://pocketpanel/content/consumer_key.js", sandbox);
+  return sandbox.CONSUMER_KEY;
+});
+
 const ACCESS_TOKEN_PREF = "margaretleibovic.pocket.accessToken";
-const CONSUMER_KEY = "";
 const REDIRECT_URI = "about:blank";
 
 var Pocket = {
