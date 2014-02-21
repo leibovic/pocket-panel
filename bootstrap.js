@@ -104,24 +104,24 @@ function startup(aData, aReason) {
   // Load into any new windows
   wm.addListener(windowListener);
 
+  // Register a panel for pocket items.
+  Home.panels.add({
+    id: PANEL_ID,
+    title: PANEL_TITLE,
+    layout: Home.panels.Layout.FRAME,
+    views: [{
+      type: Home.panels.View.LIST,
+      dataset: DATASET_ID
+    }],
+    action: Home.panels.Action.INSTALL
+  });
+
   // Update pocket items once per hour.
   HomeProvider.addPeriodicSync(DATASET_ID, 3600, updateData);
 
   if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE) {
     // Fetch items for the first time.
     Pocket.authenticate(() => updateData(openPocketPanel));
-
-    // Install a panel for pocket items.
-    Home.panels.add({
-      id: PANEL_ID,
-      title: PANEL_TITLE,
-      layout: Home.panels.Layout.FRAME,
-      views: [{
-        type: Home.panels.View.LIST,
-        dataset: DATASET_ID
-      }],
-      action: Home.panels.Action.INSTALL
-    });
   }
 }
 
