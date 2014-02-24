@@ -6,35 +6,24 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/Task.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
-const PANEL_TITLE = "Pocket";
 const PANEL_ID = "com.margaretleibovic.pocket";
 const DATASET_ID = "com.margaretleibovic.pocket.items";
+
+const PANEL = Object.freeze({
+  id: PANEL_ID,
+  title: "Pocket",
+  layout: Home.panels.Layout.FRAME,
+  views: [{
+    type: Home.panels.View.LIST,
+    dataset: DATASET_ID
+  }]
+});
 
 XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
   let win = Services.wm.getMostRecentWindow("navigator:browser");
   Services.scriptloader.loadSubScript("chrome://pocketpanel/content/pocket.js", win);
   return win.Pocket;
 });
-
-var menuId;
-
-function loadIntoWindow(window) {
-  menuId = window.NativeWindow.menu.add({
-    name: "Update Pocket panel",
-    parent: window.NativeWindow.menu.toolsMenuID,
-    callback: function() {
-      if (!Pocket.isAuthenticated) {
-        Pocket.authenticate(() => updateData(openPocketPanel));
-      } else {
-        updateData(openPocketPanel);
-      }
-    }
-  });
-}
-
-function unloadFromWindow(window) {
-  window.NativeWindow.menu.remove(menuId);
-}
 
 function openPocketPanel() {
   Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?page=" + PANEL_ID);
@@ -70,85 +59,92 @@ function deleteItems() {
   }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
 }
 
+var gMenuId;
+
+// Add a menu-item as a hack to force update data.
+function addMenuItem(window) {
+  gMenuId = window.NativeWindow.menu.add({
+    name: "Update Pocket panel",
+    parent: window.NativeWindow.menu.toolsMenuID,
+    callback: function() {
+      if (!Pocket.isAuthenticated) {
+        Pocket.authenticate(() => updateData(openPocketPanel));
+      } else {
+        updateData(openPocketPanel);
+      }
+    }
+  });
+}
+
+function removeMenuItem(window) {
+  window.NativeWindow.menu.remove(gMenuId);
+}
+
 /**
  * bootstrap.js API
  */
 var windowListener = {
+  // Wait for the window to finish loading
   onOpenWindow: function(aWindow) {
-    // Wait for the window to finish loading
     let domWindow = aWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowInternal || Ci.nsIDOMWindow);
     domWindow.addEventListener("load", function() {
       domWindow.removeEventListener("load", arguments.callee, false);
-      loadIntoWindow(domWindow);
+      addMenuItem(domWindow);
     }, false);
   },
-  
-  onCloseWindow: function(aWindow) {
-  },
-  
-  onWindowTitleChange: function(aWindow, aTitle) {
-  }
+  onCloseWindow: function(aWindow) {},
+  onWindowTitleChange: function(aWindow, aTitle) {}
 };
 
-// BOOTSTRAP_REASONS: http://mxr.mozilla.org/mozilla-central/source/toolkit/mozapps/extensions/XPIProvider.jsm#153
 function startup(aData, aReason) {
-  let wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
-
-  // Load into any existing windows
-  let windows = wm.getEnumerator("navigator:browser");
+  // Load menu item into any existing windows
+  let windows = Services.wm.getEnumerator("navigator:browser");
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    loadIntoWindow(domWindow);
+    addMenuItem(domWindow);
   }
 
-  // Load into any new windows
-  wm.addListener(windowListener);
+  // Use a window listener to add a menu item to any new windows.
+  Services.wm.addListener(windowListener);
 
-  // Register a panel for pocket items.
-  Home.panels.add({
-    id: PANEL_ID,
-    title: PANEL_TITLE,
-    layout: Home.panels.Layout.FRAME,
-    views: [{
-      type: Home.panels.View.LIST,
-      dataset: DATASET_ID
-    }],
-    action: Home.panels.Action.INSTALL
-  });
-
-  // Update pocket items once per hour.
+  // Always register a panel and a periodic sync listener.
+  Home.panels.register(PANEL);
   HomeProvider.addPeriodicSync(DATASET_ID, 3600, updateData);
 
-  if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE) {
-    // Fetch items for the first time.
-    Pocket.authenticate(() => updateData(openPocketPanel));
+  switch(aReason) {
+    case ADDON_ENABLE:
+    case ADDON_INSTALL:
+      Home.panels.install(PANEL_ID);
+
+      // Fetch items for the first time.
+      Pocket.authenticate(() => updateData(openPocketPanel));
+      break;
+
+    case ADDON_UPGRADE:
+    case ADDON_DOWNGRADE:
+      Home.panels.update(PANEL_ID);
+      break;
   }
 }
 
 function shutdown(aData, aReason) {
-  // When the application is shutting down we normally don't have to clean
-  // up any UI changes made
-  if (aReason == APP_SHUTDOWN) {
-    return;
-  }
-
   if (aReason == ADDON_UNINSTALL || aReason == ADDON_DISABLE) {
     deleteItems();
-    Home.panels.remove(PANEL_ID);
+    Home.panels.uninstall(PANEL_ID);
     Pocket.clearAccessToken();
   }
 
-  let wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
+  Home.panels.unregister(PANEL_ID);
 
-  // Stop listening for new windows
-  wm.removeListener(windowListener);
-
-  // Unload from any existing windows
-  let windows = wm.getEnumerator("navigator:browser");
+  // Remove menu item from any existing windows
+  let windows = Services.wm.getEnumerator("navigator:browser");
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    unloadFromWindow(domWindow);
+    removeMenuItem(domWindow);
   }
+
+  // Stop listening for new windows
+  Services.wm.removeListener(windowListener);
 }
 
 function install(aData, aReason) {
