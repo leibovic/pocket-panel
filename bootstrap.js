@@ -9,16 +9,6 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 const PANEL_ID = "com.margaretleibovic.pocket";
 const DATASET_ID = "com.margaretleibovic.pocket.items";
 
-const PANEL = Object.freeze({
-  id: PANEL_ID,
-  title: "Pocket",
-  layout: Home.panels.Layout.FRAME,
-  views: [{
-    type: Home.panels.View.LIST,
-    dataset: DATASET_ID
-  }]
-});
-
 XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
   let win = Services.wm.getMostRecentWindow("navigator:browser");
   Services.scriptloader.loadSubScript("chrome://pocketpanel/content/pocket.js", win);
@@ -107,8 +97,36 @@ function startup(aData, aReason) {
   // Use a window listener to add a menu item to any new windows.
   Services.wm.addListener(windowListener);
 
+  // Callback function that generates panel configuation
+  function optionsCallback() {
+    return {
+      id: PANEL_ID,
+      title: "Pocket",
+      layout: Home.panels.Layout.FRAME,
+      views: [{
+        type: Home.panels.View.LIST,
+        dataset: DATASET_ID
+      }],
+      authHandler: {
+        isAuthenticated: function isAuthenticated() {
+          return Pocket.isAuthenticated;
+        },
+        authenticate: function authenticate() {
+          Pocket.authenticate(function() {
+            Home.panels.setAuthenticated(PANEL_ID, true);
+            updateData(openPocketPanel);
+          });
+        },
+        messageText: "Please log in to Pocket",
+        buttonText: "Log in",
+        imageUrl: "drawable://icon_reading_list_empty"
+      }
+    };
+  }
+
   // Always register a panel and a periodic sync listener.
-  Home.panels.register(PANEL);
+  Home.panels.register(PANEL_ID, optionsCallback);
+
   HomeProvider.addPeriodicSync(DATASET_ID, 3600, updateData);
 
   switch(aReason) {
