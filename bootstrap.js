@@ -100,17 +100,12 @@ function startup(aData, aReason) {
   // Callback function that generates panel configuation
   function optionsCallback() {
     return {
-      id: PANEL_ID,
       title: "Pocket",
-      layout: Home.panels.Layout.FRAME,
       views: [{
         type: Home.panels.View.LIST,
         dataset: DATASET_ID
       }],
       authHandler: {
-        isAuthenticated: function isAuthenticated() {
-          return Pocket.isAuthenticated;
-        },
         authenticate: function authenticate() {
           Pocket.authenticate(function() {
             Home.panels.setAuthenticated(PANEL_ID, true);
@@ -118,8 +113,7 @@ function startup(aData, aReason) {
           });
         },
         messageText: "Please log in to Pocket",
-        buttonText: "Log in",
-        imageUrl: "drawable://icon_reading_list_empty"
+        buttonText: "Log in"
       }
     };
   }
@@ -149,6 +143,9 @@ function shutdown(aData, aReason) {
   if (aReason == ADDON_UNINSTALL || aReason == ADDON_DISABLE) {
     deleteItems();
     Home.panels.uninstall(PANEL_ID);
+    try {
+      Home.panels.setAuthenticated(PANEL_ID, false);
+    } catch (e) {}
     Pocket.clearAccessToken();
   }
 
