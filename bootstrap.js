@@ -2,6 +2,7 @@ const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 
 Cu.import("resource://gre/modules/Home.jsm");
 Cu.import("resource://gre/modules/HomeProvider.jsm");
+Cu.import("resource://gre/modules/Messaging.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/Task.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
@@ -20,6 +21,11 @@ function openPocketPanel() {
 }
 
 function updateData(callback) {
+  // Don't try to update data if the user isn't authenticated.
+  if (!Pocket.isAuthenticated) {
+    return;
+  }
+
   Pocket.getItems(function(list) {
     let items = [];
     for (let id in list) {
@@ -47,6 +53,16 @@ function deleteItems() {
     let storage = HomeProvider.getStorage(DATASET_ID);
     yield storage.deleteAll();
   }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
+}
+
+function openPanelPicker() {
+  let msg = {
+    type: "Intent:OpenForResult",
+    packageName: "org.mozilla.fennec_leibovic",
+    className: "org.mozilla.gecko.home.HomePanelPicker"
+  };
+
+  sendMessageToJava(msg);
 }
 
 var gMenuId;
@@ -120,18 +136,15 @@ function startup(aData, aReason) {
 
   // Always register a panel and a periodic sync listener.
   Home.panels.register(PANEL_ID, optionsCallback);
-
   HomeProvider.addPeriodicSync(DATASET_ID, 3600, updateData);
 
+  Home.banner.add({
+    text: "Personalize your Home page with lists and feeds! <a href\"#\">Try it out</a>",
+    icon: "chrome://branding/content/favicon32.png",
+    onclick: openPanelPicker
+  });
+
   switch(aReason) {
-    case ADDON_ENABLE:
-    case ADDON_INSTALL:
-      Home.panels.install(PANEL_ID);
-
-      // Fetch items for the first time.
-      Pocket.authenticate(() => updateData(openPocketPanel));
-      break;
-
     case ADDON_UPGRADE:
     case ADDON_DOWNGRADE:
       Home.panels.update(PANEL_ID);
