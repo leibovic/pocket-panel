@@ -2,7 +2,7 @@
 
 # Build config for the build script, build.sh. Look there for more info.
 
-APP_NAME=pocketpanel
+APP_NAME=hubusertesting
 CHROME_PROVIDERS="content"
 CLEAN_UP=1
 ROOT_FILES="bootstrap.js"

@@ -2,12 +2,12 @@
 <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 
     <Description about="urn:mozilla:install-manifest">
-        <em:id>pocket.panel@margaretleibovic.com</em:id>
+        <em:id>hub.user.testing@margaretleibovic.com</em:id>
         <em:type>2</em:type>
-        <em:name>Pocket Panel</em:name>
+        <em:name>Hub User Testing</em:name>
         <em:version>1.0</em:version>
         <em:bootstrap>true</em:bootstrap>
-        <em:description>Adds a Pocket panel to about:home.</em:description>
+        <em:description>Adds hub features for user testing.</em:description>
         <em:creator>Margaret Leibovic</em:creator>
 
         <!-- Mobile -->
