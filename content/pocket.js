@@ -58,7 +58,9 @@ var Pocket = {
       REDIRECT_URI
     ].join("");
     
-    let tab = window.BrowserApp.addTab(authUrl);
+    let parentId = window.BrowserApp.selectedTab.id;
+    let tab = window.BrowserApp.addTab(authUrl, { parentId: parentId });
+
     tab.browser.addEventListener("pageshow", evt => {
       let url = tab.browser.contentWindow.location.href;
       if (url == REDIRECT_URI) {

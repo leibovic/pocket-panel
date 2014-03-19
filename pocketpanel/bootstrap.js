@@ -60,6 +60,8 @@ function deleteItems() {
 function openPanelPicker() {
   let msg = {
     type: "Intent:Open",
+    // This can go away once bug 982461 lands
+    packageName: "org.mozilla.fennec",
     className: "org.mozilla.gecko.home.HomePanelPicker"
   };
 
