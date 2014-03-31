@@ -103,7 +103,14 @@ function startup(aData, aReason) {
       title: "Pocket",
       views: [{
         type: Home.panels.View.LIST,
-        dataset: DATASET_ID
+        dataset: DATASET_ID,
+        onrefresh: function() {
+          if (!Pocket.isAuthenticated) {
+            Pocket.authenticate(() => updateData());
+          } else {
+            updateData();
+          }
+        }
       }],
       authHandler: {
         authenticate: function authenticate() {
