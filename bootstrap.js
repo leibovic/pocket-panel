@@ -35,18 +35,22 @@ function updateData(callback) {
 }
 
 function saveItems(items, callback) {
-  Task.spawn(function() {
-    let storage = HomeProvider.getStorage(DATASET_ID);
-    yield storage.deleteAll();
-    yield storage.save(items);
-  }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  HomeProvider.requestSync(DATASET_ID, function() {
+    Task.spawn(function() {
+      let storage = HomeProvider.getStorage(DATASET_ID);
+      yield storage.deleteAll();
+      yield storage.save(items);
+    }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  });
 }
 
 function deleteItems() {
-  Task.spawn(function() {
-    let storage = HomeProvider.getStorage(DATASET_ID);
-    yield storage.deleteAll();
-  }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
+  HomeProvider.requestSync(DATASET_ID, function() {
+    Task.spawn(function() {
+      let storage = HomeProvider.getStorage(DATASET_ID);
+      yield storage.deleteAll();
+    }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
+  });
 }
 
 var gMenuId;
