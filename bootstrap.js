@@ -122,7 +122,7 @@ function startup(aData, aReason) {
         type: Home.panels.View.LIST,
         dataset: DATASET_ID
       }],
-      authHandler: {
+      auth: {
         authenticate: function authenticate() {
           Pocket.authenticate(function() {
             Home.panels.setAuthenticated(PANEL_ID, true);
