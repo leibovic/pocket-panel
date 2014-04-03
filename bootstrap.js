@@ -149,7 +149,7 @@ function startup(aData, aReason) {
       }]
     };
   });
-  Home.panels.register("test2#margaretleibovic.com", function() {
+  Home.panels.register("test2@margaretleibovic.com", function() {
     return {
       title: "Another Test Panel",
       views: [{
