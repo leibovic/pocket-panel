@@ -133,7 +133,7 @@ function startup(aData, aReason) {
         buttonText: "Log in"
       }
     };
-  }
+  };
 
   // Always register a panel and a periodic sync listener.
   Home.panels.register(PANEL_ID, optionsCallback);
@@ -159,12 +159,6 @@ function startup(aData, aReason) {
     };
   });
 
-  Home.banner.add({
-    text: "Personalize your Home page with lists and feeds! <a href\"#\">Try it out</a>",
-    icon: BANNER_ICON,
-    onclick: openPanelPicker
-  });
-
   switch(aReason) {
     case ADDON_INSTALL:
       // Store some test data
@@ -177,7 +171,7 @@ function startup(aData, aReason) {
           title: "Item 2",
           url: "http://example.com/2"
         }]);
-      }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+      }).then(null, null);
       break;
     case ADDON_UPGRADE:
     case ADDON_DOWNGRADE:
