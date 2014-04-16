@@ -16,7 +16,7 @@ XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
 });
 
 function openPocketPanel() {
-  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?page=" + PANEL_ID);
+  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?panel=" + PANEL_ID);
 }
 
 function updateData(callback) {
@@ -35,18 +35,22 @@ function updateData(callback) {
 }
 
 function saveItems(items, callback) {
-  Task.spawn(function() {
-    let storage = HomeProvider.getStorage(DATASET_ID);
-    yield storage.deleteAll();
-    yield storage.save(items);
-  }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  HomeProvider.requestSync(DATASET_ID, function() {
+    Task.spawn(function() {
+      let storage = HomeProvider.getStorage(DATASET_ID);
+      yield storage.deleteAll();
+      yield storage.save(items);
+    }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  });
 }
 
 function deleteItems() {
-  Task.spawn(function() {
-    let storage = HomeProvider.getStorage(DATASET_ID);
-    yield storage.deleteAll();
-  }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
+  HomeProvider.requestSync(DATASET_ID, function() {
+    Task.spawn(function() {
+      let storage = HomeProvider.getStorage(DATASET_ID);
+      yield storage.deleteAll();
+    }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
+  });
 }
 
 var gMenuId;
@@ -103,9 +107,16 @@ function startup(aData, aReason) {
       title: "Pocket",
       views: [{
         type: Home.panels.View.LIST,
-        dataset: DATASET_ID
+        dataset: DATASET_ID,
+        onrefresh: function() {
+          if (!Pocket.isAuthenticated) {
+            Pocket.authenticate(() => updateData());
+          } else {
+            updateData();
+          }
+        }
       }],
-      authHandler: {
+      auth: {
         authenticate: function authenticate() {
           Pocket.authenticate(function() {
             Home.panels.setAuthenticated(PANEL_ID, true);
