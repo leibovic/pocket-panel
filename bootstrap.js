@@ -16,7 +16,7 @@ XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
 });
 
 function openPocketPanel() {
-  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?page=" + PANEL_ID);
+  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?panel=" + PANEL_ID);
 }
 
 function updateData(callback) {
@@ -116,7 +116,7 @@ function startup(aData, aReason) {
           }
         }
       }],
-      authHandler: {
+      auth: {
         authenticate: function authenticate() {
           Pocket.authenticate(function() {
             Home.panels.setAuthenticated(PANEL_ID, true);
