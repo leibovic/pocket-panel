@@ -34,6 +34,7 @@ function optionsCallback() {
         }
       }
     }],
+    // Authentication UI currently broken because of bug 997328
     auth: {
       authenticate: function authenticate() {
         Pocket.authenticate(function() {
