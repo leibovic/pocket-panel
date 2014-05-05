@@ -16,6 +16,10 @@ XPCOMUtils.defineLazyGetter(this, "Strings", function() {
   return Services.strings.createBundle("chrome://pocketpanel/locale/pocket.properties");
 });
 
+XPCOMUtils.defineLazyGetter(this, "Reader", function() {
+  return Services.wm.getMostRecentWindow("navigator:browser").Reader;
+});
+
 // Unique IDs for panel and dataset.
 const PANEL_ID = "pocket.panel@margaretleibovic.com";
 const DATASET_ID = "pocket.dataset@margaretleibovic.com";
@@ -58,11 +62,31 @@ function refreshDataset(callback) {
     let items = [];
     for (let id in list) {
       let item = list[id];
+
+      // Cache the article for offline use
+      let url = item.resolved_url;
+      Reader.parseDocumentFromURL(url, function (article) {
+        if (!article) {
+          Cu.reportError("Error parsing Pocket article: " + url);
+          return;
+        }
+        try {
+          Reader.storeArticleInCache(article, function (success) {
+            if (!success) {
+              Cu.reportError("Error caching Pocket article: " + url);
+            }
+          });
+        } catch (e) {
+          // storeArticleInCache can throw if the article is already cached
+          Cu.reportError("Error caching Pocket article: " + url + ": " + e);
+        }
+      });
+
       items.push({
         title: item.resolved_title,
         description: item.excerpt,
         // Open URLs in reader mode
-        url: "about:reader?url=" + encodeURIComponent(item.resolved_url)
+        url: "about:reader?url=" + encodeURIComponent(url)
       });
     }
     saveItems(items, callback);
