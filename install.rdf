@@ -7,7 +7,7 @@
         <em:name>Pocket Panel</em:name>
         <em:version>0.1</em:version>
         <em:bootstrap>true</em:bootstrap>
-        <em:description>Adds a Pocket panel to about:home.</em:description>
+        <em:description>Adds a Pocket panel to your Firefox for Android home page.</em:description>
         <em:creator>Margaret Leibovic</em:creator>
 
         <!-- Mobile -->
