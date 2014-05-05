@@ -29,7 +29,7 @@ var Pocket = {
   },
 
   get isAuthenticated() {
-    return !!this._accessToken;
+    return !!this.accessToken;
   },
 
   clearAccessToken: function() {
