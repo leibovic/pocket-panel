@@ -34,7 +34,7 @@ function optionsCallback() {
         }
       }
     }],
-    // Authentication UI currently broken because of bug 997328
+    /* Authentication UI currently broken because of bug 997328
     auth: {
       authenticate: function authenticate() {
         Pocket.authenticate(function() {
@@ -45,6 +45,7 @@ function optionsCallback() {
       messageText: Strings.GetStringFromName("auth.message"),
       buttonText: Strings.GetStringFromName("auth.button")
     }
+    */
   };
 }
 
@@ -94,6 +95,7 @@ function startup(aData, aReason) {
     case ADDON_ENABLE:
     case ADDON_INSTALL:
       Home.panels.install(PANEL_ID);
+      Pocket.authenticate(() => refreshDataset(() => openPocketPanel()));
       break;
 
     case ADDON_UPGRADE:
@@ -111,7 +113,8 @@ function shutdown(aData, aReason) {
     Home.panels.uninstall(PANEL_ID);
     deleteItems();
 
-    Home.panels.setAuthenticated(PANEL_ID, false);
+    // Authentication UI currently broken because of bug 997328
+    //Home.panels.setAuthenticated(PANEL_ID, false);
     Pocket.clearAccessToken();
   }
 
