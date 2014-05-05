@@ -1,5 +1,4 @@
-Pocket Panel Add-on for Firefox for Android
-============================================
+# Pocket Panel Add-on for Firefox for Android
 
 Adds a Pocket panel to about:home.
 
