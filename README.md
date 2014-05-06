@@ -1,5 +1,5 @@
-# Pocket Panel Add-on for Firefox for Android
+# Pocket Panel
 
-Adds a Pocket panel to about:home.
+Adds a Pocket panel to your Firefox for Android home page.
 
-Install the add-on here: http://people.mozilla.org/~mleibovic/pocketpanel.xpi
+Install the add-on here: https://addons.mozilla.org/en-US/firefox/addon/pocket-panel/
