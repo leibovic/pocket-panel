@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml">
+  <setting id="auth-setting" type="control">
+    <button id="auth-button"/>
+  </setting>
+</vbox>

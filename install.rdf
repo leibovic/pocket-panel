@@ -19,5 +19,7 @@
             </Description>
         </em:targetApplication>
 
+        <em:optionsURL>chrome://pocketpanel/content/options.xul</em:optionsURL>
+
     </Description>
 </RDF>

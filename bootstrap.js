@@ -1,5 +1,6 @@
 const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 
+Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://gre/modules/Home.jsm");
 Cu.import("resource://gre/modules/HomeProvider.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
@@ -20,6 +21,8 @@ XPCOMUtils.defineLazyGetter(this, "Reader", function() {
   return Services.wm.getMostRecentWindow("navigator:browser").Reader;
 });
 
+const ADDON_ID = "pocket.panel@margaretleibovic.com";
+
 // Unique IDs for panel and dataset.
 const PANEL_ID = "pocket.panel@margaretleibovic.com";
 const DATASET_ID = "pocket.dataset@margaretleibovic.com";
@@ -32,7 +35,7 @@ function optionsCallback() {
       dataset: DATASET_ID,
       onrefresh: function onrefresh() {
         if (!Pocket.isAuthenticated) {
-          Pocket.authenticate(() => refreshDataset());
+          Pocket.authenticate(refreshDataset);
         } else {
           refreshDataset();
         }
@@ -54,7 +57,7 @@ function optionsCallback() {
 }
 
 function openPocketPanel() {
-  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.loadURI("about:home?panel=" + PANEL_ID);
+  Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.addTab("about:home?panel=" + PANEL_ID);
 }
 
 function refreshDataset(callback) {
@@ -65,21 +68,23 @@ function refreshDataset(callback) {
 
       // Cache the article for offline use
       let url = item.resolved_url;
-      Reader.parseDocumentFromURL(url, function (article) {
-        if (!article) {
-          Cu.reportError("Error parsing Pocket article: " + url);
+
+      Reader.getArticleFromCache(url, function (article) {
+        // Nothing to do if the article is already in the cache
+        if (article) {
           return;
         }
-        try {
+        Reader.parseDocumentFromURL(url, function (article) {
+          if (!article) {
+            Cu.reportError("Error parsing Pocket article: " + url);
+            return;
+          }
           Reader.storeArticleInCache(article, function (success) {
             if (!success) {
-              Cu.reportError("Error caching Pocket article: " + url);
+              Cu.reportError("Error storing Pocket article in cache: " + url);
             }
           });
-        } catch (e) {
-          // storeArticleInCache can throw if the article is already cached
-          Cu.reportError("Error caching Pocket article: " + url + ": " + e);
-        }
+        });
       });
 
       items.push({
@@ -89,16 +94,13 @@ function refreshDataset(callback) {
         url: "about:reader?url=" + encodeURIComponent(url)
       });
     }
-    saveItems(items, callback);
-  });
-}
 
-function saveItems(items, callback) {
-  Task.spawn(function() {
-    let storage = HomeProvider.getStorage(DATASET_ID);
-    yield storage.deleteAll();
-    yield storage.save(items);
-  }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+    Task.spawn(function() {
+      let storage = HomeProvider.getStorage(DATASET_ID);
+      yield storage.deleteAll();
+      yield storage.save(items);
+    }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  });
 }
 
 function deleteItems() {
@@ -107,6 +109,39 @@ function deleteItems() {
     yield storage.deleteAll();
   }).then(null, e => Cu.reportError("Error deleting Pocket items from HomeProvider: " + e));
 }
+
+function optionsDisplayed(doc, topic, id) {
+  if (id != ADDON_ID) {
+    return;
+  }
+
+  let button = doc.getElementById("auth-button");
+  updateButton(button);
+
+  button.addEventListener("click", function(e) {
+    if (Pocket.isAuthenticated) {
+      // Log out
+      Pocket.clearAccessToken();
+      deleteItems();
+      updateButton(button);
+    } else {
+      // Log in
+      Pocket.authenticate(function() {
+        refreshDataset();
+        updateButton(button);
+      });
+    }
+  });
+}
+
+function updateButton(button) {
+  if (Pocket.isAuthenticated) {
+    button.setAttribute("label", Strings.GetStringFromName("logOut"));
+  } else {
+    button.setAttribute("label", Strings.GetStringFromName("logIn"));
+  }
+}
+
 
 /**
  * bootstrap.js API
@@ -119,7 +154,7 @@ function startup(aData, aReason) {
     case ADDON_ENABLE:
     case ADDON_INSTALL:
       Home.panels.install(PANEL_ID);
-      Pocket.authenticate(() => refreshDataset(() => openPocketPanel()));
+      Pocket.authenticate(() => refreshDataset(openPocketPanel));
       break;
 
     case ADDON_UPGRADE:
@@ -130,6 +165,8 @@ function startup(aData, aReason) {
 
   // Update data once every hour.
   HomeProvider.addPeriodicSync(DATASET_ID, 3600, refreshDataset);
+
+  Services.obs.addObserver(optionsDisplayed, AddonManager.OPTIONS_NOTIFICATION_DISPLAYED, false);
 }
 
 function shutdown(aData, aReason) {
@@ -143,6 +180,8 @@ function shutdown(aData, aReason) {
   }
 
   Home.panels.unregister(PANEL_ID);
+
+  Services.obs.removeObserver(optionsDisplayed, AddonManager.OPTIONS_NOTIFICATION_DISPLAYED);
 }
 
 function install(aData, aReason) {}

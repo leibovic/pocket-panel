@@ -34,6 +34,7 @@ var Pocket = {
 
   clearAccessToken: function() {
     Services.prefs.clearUserPref(ACCESS_TOKEN_PREF);
+    this._accessToken = "";
   },
 
   // http://getpocket.com/developer/docs/authentication
@@ -64,6 +65,7 @@ var Pocket = {
       if (url == REDIRECT_URI) {
         this._getAccessToken(requestToken, callback);
       }
+      window.BrowserApp.closeTab(tab);
     }, false);
   },
 
@@ -92,7 +94,7 @@ var Pocket = {
         access_token: this.accessToken,
         contentType: "article",
         sort: "newest",
-        count: 20,
+        count: 50,
         detailType: "simple"
       }),
       response => {
