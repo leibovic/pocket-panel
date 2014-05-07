@@ -9,6 +9,9 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
 XPCOMUtils.defineLazyGetter(this, "Pocket", function() {
   let win = Services.wm.getMostRecentWindow("navigator:browser");
+  if (win.Pocket) {
+    return win.Pocket;
+  }
   Services.scriptloader.loadSubScript("chrome://pocketpanel/content/pocket.js", win);
   return win.Pocket;
 });
@@ -84,7 +87,9 @@ function refreshDataset(callback) {
       yield storage.save(items);
     }).then(() => {
       callback();
-      cacheArticles(urls);
+
+      // Disable article caching because we're running into indexedDB issues
+      //cacheArticles(urls);
     }, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
   });
 }

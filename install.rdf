@@ -5,7 +5,7 @@
         <em:id>pocket.panel@margaretleibovic.com</em:id>
         <em:type>2</em:type>
         <em:name>Pocket Panel</em:name>
-        <em:version>0.2</em:version>
+        <em:version>0.3</em:version>
         <em:bootstrap>true</em:bootstrap>
         <em:description>Adds a Pocket panel to your Firefox for Android home page.</em:description>
         <em:creator>Margaret Leibovic</em:creator>
