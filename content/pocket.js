@@ -64,8 +64,8 @@ var Pocket = {
       let url = tab.browser.contentWindow.location.href;
       if (url == REDIRECT_URI) {
         this._getAccessToken(requestToken, callback);
+        window.BrowserApp.closeTab(tab);
       }
-      window.BrowserApp.closeTab(tab);
     }, false);
   },
 
@@ -94,7 +94,7 @@ var Pocket = {
         access_token: this.accessToken,
         contentType: "article",
         sort: "newest",
-        count: 50,
+        count: 20,
         detailType: "simple"
       }),
       response => {

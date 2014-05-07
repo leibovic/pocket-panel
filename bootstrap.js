@@ -63,43 +63,60 @@ function openPocketPanel() {
 function refreshDataset(callback) {
   Pocket.getItems(function(list) {
     let items = [];
+    let urls = [];
+
     for (let id in list) {
       let item = list[id];
-
-      // Cache the article for offline use
-      let url = item.resolved_url;
-
-      Reader.getArticleFromCache(url, function (article) {
-        // Nothing to do if the article is already in the cache
-        if (article) {
-          return;
-        }
-        Reader.parseDocumentFromURL(url, function (article) {
-          if (!article) {
-            Cu.reportError("Error parsing Pocket article: " + url);
-            return;
-          }
-          Reader.storeArticleInCache(article, function (success) {
-            if (!success) {
-              Cu.reportError("Error storing Pocket article in cache: " + url);
-            }
-          });
-        });
-      });
-
       items.push({
         title: item.resolved_title,
         description: item.excerpt,
         // Open URLs in reader mode
-        url: "about:reader?url=" + encodeURIComponent(url)
+        url: "about:reader?url=" + encodeURIComponent(item.resolved_url)
       });
+
+      let url = item.resolved_url;
+      urls.push(url);
     }
 
     Task.spawn(function() {
       let storage = HomeProvider.getStorage(DATASET_ID);
       yield storage.deleteAll();
       yield storage.save(items);
-    }).then(callback, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+    }).then(() => {
+      callback();
+      cacheArticles(urls);
+    }, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
+  });
+}
+
+let pendingUrls = {};
+
+// Cache articles for offline use
+function cacheArticles(urls) {
+  urls.forEach(function(url) {
+
+    // Don't try to parse/cache a URL twice.
+    if (url in pendingUrls) {
+      return;
+    }
+    pendingUrls[url] = true;
+
+    Reader.getArticleFromCache(url, function (cachedArticle) {
+      if (cachedArticle) {
+        return;
+      }
+      Reader.parseDocumentFromURL(url, function (article) {
+        if (!article) {
+          Cu.reportError("Error parsing Pocket article: " + article.url);
+          return;
+        }
+        Reader.storeArticleInCache(article, function (success) {
+          if (!success) {
+            Cu.reportError("Error storing Pocket article in cache: " + article.url);
+          }
+        });
+      });
+    });
   });
 }
 
