@@ -36,26 +36,8 @@ function optionsCallback() {
     views: [{
       type: Home.panels.View.LIST,
       dataset: DATASET_ID,
-      onrefresh: function onrefresh() {
-        if (!Pocket.isAuthenticated) {
-          Pocket.authenticate(refreshDataset);
-        } else {
-          refreshDataset();
-        }
-      }
-    }],
-    /* Authentication UI currently broken because of bug 997328
-    auth: {
-      authenticate: function authenticate() {
-        Pocket.authenticate(function() {
-          Home.panels.setAuthenticated(PANEL_ID, true);
-          refreshDataset(openPocketPanel);
-        });
-      },
-      messageText: Strings.GetStringFromName("auth.message"),
-      buttonText: Strings.GetStringFromName("auth.button")
-    }
-    */
+      onrefresh: refreshDataset
+    }]
   };
 }
 
@@ -63,66 +45,36 @@ function openPocketPanel() {
   Services.wm.getMostRecentWindow("navigator:browser").BrowserApp.addTab("about:home?panel=" + PANEL_ID);
 }
 
-function refreshDataset(callback) {
-  Pocket.getItems(function(list) {
-    let items = [];
-    let urls = [];
-
-    for (let id in list) {
-      let item = list[id];
-      items.push({
-        title: item.resolved_title,
-        description: item.excerpt,
-        // Open URLs in reader mode
-        url: "about:reader?url=" + encodeURIComponent(item.resolved_url)
-      });
-
-      let url = item.resolved_url;
-      urls.push(url);
-    }
-
-    Task.spawn(function() {
-      let storage = HomeProvider.getStorage(DATASET_ID);
-      yield storage.deleteAll();
-      yield storage.save(items);
-    }).then(() => {
-      callback();
-
-      // Disable article caching because we're running into indexedDB issues
-      //cacheArticles(urls);
-    }, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
-  });
+function refreshDataset() {
+  if (Pocket.isAuthenticated) {
+    Pocket.getList(saveList);
+  } else {
+    Pocket.getHits(saveItems);
+  }
 }
 
-let pendingUrls = {};
+function saveList(list) {
+  let items = [];
 
-// Cache articles for offline use
-function cacheArticles(urls) {
-  urls.forEach(function(url) {
-
-    // Don't try to parse/cache a URL twice.
-    if (url in pendingUrls) {
-      return;
-    }
-    pendingUrls[url] = true;
-
-    Reader.getArticleFromCache(url, function (cachedArticle) {
-      if (cachedArticle) {
-        return;
-      }
-      Reader.parseDocumentFromURL(url, function (article) {
-        if (!article) {
-          Cu.reportError("Error parsing Pocket article: " + article.url);
-          return;
-        }
-        Reader.storeArticleInCache(article, function (success) {
-          if (!success) {
-            Cu.reportError("Error storing Pocket article in cache: " + article.url);
-          }
-        });
-      });
+  for (let id in list) {
+    let item = list[id];
+    items.push({
+      title: item.resolved_title,
+      description: item.excerpt,
+      // Open URLs in reader mode
+      url: "about:reader?url=" + encodeURIComponent(item.resolved_url)
     });
-  });
+  }
+
+  saveItems(items);
+}
+
+function saveItems(items) {
+  Task.spawn(function() {
+    let storage = HomeProvider.getStorage(DATASET_ID);
+    yield storage.deleteAll();
+    yield storage.save(items);
+  }).then(null, e => Cu.reportError("Error saving Pocket items to HomeProvider: " + e));
 }
 
 function deleteItems() {
@@ -144,7 +96,7 @@ function optionsDisplayed(doc, topic, id) {
     if (Pocket.isAuthenticated) {
       // Log out
       Pocket.clearAccessToken();
-      deleteItems();
+      refreshDataset();
       updateButton(button);
     } else {
       // Log in
@@ -164,7 +116,6 @@ function updateButton(button) {
   }
 }
 
-
 /**
  * bootstrap.js API
  */
@@ -176,13 +127,17 @@ function startup(aData, aReason) {
     case ADDON_ENABLE:
     case ADDON_INSTALL:
       Home.panels.install(PANEL_ID);
-      Pocket.authenticate(() => refreshDataset(openPocketPanel));
+      refreshDataset();
       break;
 
     case ADDON_UPGRADE:
     case ADDON_DOWNGRADE:
       Home.panels.update(PANEL_ID);
       break;
+  }
+
+  if (aReason == ADDON_INSTALL) {
+    openPocketPanel();
   }
 
   // Update data once every hour.
