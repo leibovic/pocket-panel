@@ -1,4 +1,4 @@
-const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
+var { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 
 Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://gre/modules/Home.jsm");
@@ -24,11 +24,11 @@ XPCOMUtils.defineLazyGetter(this, "Reader", function() {
   return Services.wm.getMostRecentWindow("navigator:browser").Reader;
 });
 
-const ADDON_ID = "pocket.panel@margaretleibovic.com";
+var ADDON_ID = "pocket.panel@margaretleibovic.com";
 
 // Unique IDs for panel and dataset.
-const PANEL_ID = "pocket.panel@margaretleibovic.com";
-const DATASET_ID = "pocket.dataset@margaretleibovic.com";
+var PANEL_ID = "pocket.panel@margaretleibovic.com";
+var DATASET_ID = "pocket.dataset@margaretleibovic.com";
 
 function optionsCallback() {
   return {
